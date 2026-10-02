@@ -20,6 +20,7 @@ from .core import Song, Workspace
 from .plugins import drum_edit
 from .practice.tools import PracticeRequest
 from .ui import HEAD, build_player, section_label
+from .ui.theme import APP_CSS, THEME
 
 MIX_FULL = "Full song"
 
@@ -51,6 +52,17 @@ def choice_for(gains: dict[str, float], instrument: str, has_stems: bool) -> str
     if gains.get(instrument, 1.0) == 0.0:
         return f"Play along (no {instrument})"
     return f"Only {instrument}"
+
+
+BRAND = ('<div class="mp-brand-name">Drum<i>.</i>Practice</div>'
+         '<div class="mp-brand-sub">Paste a song, get a drum lesson you can play on your electronic kit.</div>')
+BRAND_ALL = ('<div class="mp-brand-name">Music<i>.</i>Practice</div>'
+             '<div class="mp-brand-sub">Paste a song, pick your instrument, practice along.</div>')
+
+
+def notes_md(log: RunLog) -> str:
+    """Drums-only page: the song title and numbers are in the player's header; only notes here."""
+    return "\n".join(f"- {n}" for n in log.notes)
 
 
 def summary_md(song: Song, log: RunLog) -> str:
@@ -109,13 +121,14 @@ def build_app(conductor: Conductor) -> gr.Blocks:
         state = {"dir": str(song.dir), "instrument": instrument, "log": log.notes}
         ex_choices, ex_state = exercises_for(song, instrument, 1, min(8, n_bars))
         return (
-            state, summary_md(song, log), player,
+            state, notes_md(log) if enabled_instruments() == ["drums"] else summary_md(song, log), player,
             gr.update(choices=labels, value=None),
             gr.update(value=1, maximum=n_bars), gr.update(value=min(8, n_bars), maximum=n_bars),
             gr.update(choices=mix_choices(instrument, bool(song.stems())),
                       value=mix_choices(instrument, bool(song.stems()))[0]),
             gr.update(choices=ex_choices, value=None), ex_state,
             str(iso) if iso else None, str(minus) if minus else None,
+            gr.Accordion(open=False), gr.Accordion(visible=True), gr.Accordion(visible=True),
         )
 
     def exercises_for(song: Song, instrument: str, a: int, b: int):
@@ -195,28 +208,37 @@ def build_app(conductor: Conductor) -> gr.Blocks:
         state = gr.State(None)
         ex_state = gr.State({})
 
-        with gr.Row(equal_height=True):
-            url = gr.Textbox(label="Song link", scale=5, max_lines=1,
-                             placeholder="https://www.youtube.com/watch?v=...  (YouTube, "
-                                         "SoundCloud, Bandcamp; not Spotify or Apple Music)")
-            instrument = gr.Dropdown(choices, value="drums" if "drums" in choices else choices[0],
-                                     label="I play", scale=1, interactive=len(choices) > 1)
-            go = gr.Button("Analyze song", variant="primary", scale=1)
-        with gr.Row():
-            separate = gr.Checkbox(value=sep_ok, interactive=sep_ok, container=False,
-                                   label="Separate instruments" + ("" if sep_ok else
-                                                                   " (Demucs not installed)"))
-            transcribe = gr.Checkbox(value=tr_ok, interactive=tr_ok, container=False,
-                                     label=("Transcribe the drums" if drums_only else "Transcribe notes and tab")
-                                     + ("" if tr_ok else " (Basic Pitch not installed)"))
-            with gr.Accordion("Use an audio file instead", open=False):
-                upload = gr.File(label="Audio file", type="filepath",
+        gr.HTML(BRAND if drums_only else BRAND_ALL, elem_id="mp-brand")
+        with gr.Group(elem_id="mp-input"):
+            with gr.Row(equal_height=True, elem_classes=["mp-input-row"]):
+                url = gr.Textbox(show_label=False, container=False, scale=6, max_lines=1,
+                                 elem_id="mp-url", label="Song link",
+                                 placeholder="Paste a song link: YouTube, SoundCloud, Bandcamp... "
+                                             "(not Spotify or Apple Music)")
+                instrument = gr.Dropdown(choices, value="drums" if "drums" in choices else choices[0],
+                                         label="I play", scale=1, visible=not drums_only)
+                go = gr.Button("Analyze song", variant="primary", scale=1, min_width=150,
+                               elem_id="mp-go")
+            # drums-only: always separate and transcribe; the boxes only show when they matter
+            with gr.Row(visible=not (drums_only and sep_ok)):
+                separate = gr.Checkbox(value=sep_ok, interactive=sep_ok, container=False,
+                                       label="Separate instruments" + ("" if sep_ok else
+                                             " (Demucs not installed: the drums are transcribed "
+                                             "from the full song, less accurately)"))
+                transcribe = gr.Checkbox(value=tr_ok, interactive=tr_ok, container=False,
+                                         visible=not drums_only,
+                                         label="Transcribe notes and tab" + ("" if tr_ok else
+                                               " (Basic Pitch not installed)"))
+            with gr.Accordion("Or upload an audio file", open=False, elem_classes=["mp-upload"]) as upload_box:
+                upload = gr.File(show_label=False, type="filepath",
                                  file_types=[".mp3", ".wav", ".flac", ".m4a", ".ogg"])
 
-        summary = gr.Markdown()
+        summary = gr.Markdown(elem_id="mp-notes")
         player = gr.HTML(EMPTY_PLAYER, elem_id="mp-wrap", padding=False)
 
-        with gr.Accordion("Make a practice track to download", open=False):
+        # practice track and export only appear once there is a song
+        with gr.Accordion("Make a practice track to download", open=False, elem_classes=["mp-card"],
+                          visible=False) as practice_box:
             gr.Markdown("Renders a file with the bars you pick, slowed down and repeated, "
                         "with count-in clicks. Uses higher-quality slow-down than the player.")
             with gr.Row():
@@ -224,8 +246,8 @@ def build_app(conductor: Conductor) -> gr.Blocks:
                 start_bar = gr.Number(value=1, precision=0, label="From bar", minimum=1)
                 end_bar = gr.Number(value=8, precision=0, label="To bar", minimum=1)
                 offset = gr.Number(value=0, precision=0, label="Grid offset",
-                                   info="Shift if bar lines feel off")
-            with gr.Row():
+                                   info="Shift if bar lines feel off", visible=not drums_only)
+            with gr.Row(visible=not drums_only):
                 exercise = gr.Dropdown(label="Suggested exercise (fills the settings)",
                                        choices=[], scale=2)
                 exercise_why = gr.Markdown()
@@ -243,21 +265,27 @@ def build_app(conductor: Conductor) -> gr.Blocks:
             build = gr.Button("Make practice track", variant="primary")
             practice_audio = gr.Audio(label="Practice track", interactive=False)
 
-        with gr.Accordion("Downloads", open=False):
-            with gr.Row():
+        with gr.Accordion("Export" if drums_only else "Downloads", open=False, elem_classes=["mp-card"],
+                          visible=False) as export_box:
+            with gr.Row(visible=not drums_only):
                 iso_audio = gr.Audio(label="Your instrument alone", interactive=False)
                 minus_audio = gr.Audio(label="Song without your instrument", interactive=False)
-            gr.Markdown("Export: a zip with the transcription (Markdown), MIDI, notes CSV, "
+            gr.Markdown("A zip with the drum MIDI (opens as drums in MuseScore or any DAW), the drum "
+                        "grid as text, the separated tracks and every practice track you made."
+                        if drums_only else
+                        "Export: a zip with the transcription (Markdown), MIDI, notes CSV, "
                         "the isolated tracks and every practice track you made for this song.")
             export_btn = gr.Button("Export song")
             export_file = gr.File(label="Export")
 
         go.click(analyze, [url, upload, instrument, separate, transcribe],
                  [state, summary, player, section, start_bar, end_bar, mix_choice,
-                  exercise, ex_state, iso_audio, minus_audio])
+                  exercise, ex_state, iso_audio, minus_audio,
+                  upload_box, practice_box, export_box])
         url.submit(analyze, [url, upload, instrument, separate, transcribe],
                    [state, summary, player, section, start_bar, end_bar, mix_choice,
-                    exercise, ex_state, iso_audio, minus_audio])
+                    exercise, ex_state, iso_audio, minus_audio,
+                  upload_box, practice_box, export_box])
         section.change(pick_section, [state, section], [start_bar, end_bar, exercise, ex_state])
         exercise.change(load_exercise, [state, exercise, ex_state],
                         [exercise_why, start_bar, end_bar, mix_choice, speed, loops, gap,
@@ -274,7 +302,8 @@ def build_app(conductor: Conductor) -> gr.Blocks:
 
 def launch(app: gr.Blocks, workspace: Workspace, **kwargs):
     """The player's script and styles go in <head>; the song folder must be servable."""
-    return app.launch(head=HEAD, allowed_paths=[str(workspace.root)], **kwargs)
+    return app.launch(head=HEAD, allowed_paths=[str(workspace.root)], theme=THEME, css=APP_CSS,
+                      **kwargs)
 
 
 def main() -> None:

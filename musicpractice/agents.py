@@ -208,10 +208,7 @@ class TranscriptionAgent:
             song.save()
         self._echoes(song, use_adtof)
         self._grid_from_drums(song, log)
-        if use_adtof:
-            log.warn("Drum transcription is a draft: kick, hi-hat and cymbals are the most reliable, "
-                     "snare is good, toms are often missed, and crash vs ride is a best guess.")
-        else:
+        if not use_adtof:     # (with ADTOF: accuracy is in the README, not repeated every song)
             log.warn("Drums were transcribed with the basic detector, which confuses pieces on real "
                      "recordings. Install ADTOF for much better results (see README, 'Drums').")
 

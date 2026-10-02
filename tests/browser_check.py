@@ -56,7 +56,7 @@ with sync_playwright() as p:
     pg.wait_for_selector("text=Paste a song link above")
     pg.screenshot(path=str(OUT / "p0_empty.png"), full_page=True)
 
-    pg.get_by_text("Use an audio file instead").click()
+    pg.get_by_text("Or upload an audio file").click()
     pg.locator("input[type=file]").set_input_files(str(OUT / "pl_song.wav"))
     time.sleep(1.5)
     pg.get_by_role("button", name="Analyze song").click()

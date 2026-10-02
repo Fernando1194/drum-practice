@@ -274,7 +274,8 @@ def test_drum_workflow_and_export(tmp_path):
     # synthetic cymbals don't sound like real ones, so only kick/snare are meaningful here.
     assert all(sc[p]["f1"] >= 0.85 for p in ("kick", "snare")), sc
     assert {h["piece"] for h in hits} <= set(PIECES)
-    assert any("draft" in n or "basic detector" in n for n in log.notes)
+    from musicpractice.plugins.drums_adtof import adtof_available
+    assert adtof_available() or any("basic detector" in n for n in log.notes)
     import pretty_midi
     pm = pretty_midi.PrettyMIDI(song.get("midi:drums"))
     assert pm.instruments[0].is_drum and {n.pitch for n in pm.instruments[0].notes} >= {36, 38, 42}

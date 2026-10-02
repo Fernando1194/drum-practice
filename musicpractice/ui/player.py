@@ -429,13 +429,16 @@ def build_player(song: Song, instrument: str, sources: list[tuple[str, str, str]
     sheet_html = f'<div class="{sheet_cls}">{sheet}</div>{grip}'
     if is_drums:
         kit = kit_svg({h["piece"] for h in drum_hits})
-        body = (f'<div class="mp-body mp-body--drums"><div class="mp-kit">{kit}'
-                f'<p class="mp-kit-note">Each piece lights up when it is hit; a ring in its color '
-                f'grows during the beat before its next hit. Grid marks use the same colors.</p>'
+        body = (f'<div class="mp-body mp-body--drums"><div class="mp-kit" title="Each piece lights '
+                f'up when it is hit; a ring in its color grows during the beat before its next hit">{kit}'
                 f'</div><div class="mp-split" role="separator" aria-orientation="vertical" tabindex="0" '
                 f'aria-label="Drag to resize the kit and the grid (double-click to reset)"></div>'
                 f'{sheet_html}{steps_html}{_highway_html(sorted({h["piece"] for h in drum_hits}, key=PIECES.index))}</div>')
-        stage = (f'<div class="mp-stage mp-stage--drums"><div class="mp-where">'
+        dur = int(duration)
+        songhead = (f'<div class="mp-songhead"><div class="mp-song-title">{html.escape(song.title)}</div>'
+                    f'<div class="mp-song-meta">{song.get("tempo"):.0f} BPM &middot; {n} bars &middot; '
+                    f'{dur // 60}:{dur % 60:02d}</div></div>')
+        stage = (f'<div class="mp-stage mp-stage--drums">{songhead}<div class="mp-where">'
                  f'<span class="mp-k">Bar</span><span class="mp-bar-now">1</span>'
                  f'<span class="mp-of">of {n}</span><span class="mp-time">0:00</span></div>'
                  f'<span class="mp-chord-now" hidden></span><span class="mp-chord-next" hidden>'

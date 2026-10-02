@@ -127,7 +127,11 @@
 
 /* ---------- drums: kit diagram beside the drum grid ----------
    Each piece has one color (--c, set inline) shared by the kit and its grid row. */
-.mp-stage--drums { display: flex; justify-content: flex-end; }
+.mp-stage--drums { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.mp-songhead { min-width: 0; }
+.mp-player .mp-song-title { font-family: var(--mp-chord-font); font-weight: 600; font-size: 34px; line-height: 1.05;
+  color: var(--mp-ink-on-stage); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-player .mp-song-meta { margin-top: 4px; color: var(--mp-muted-on-stage); font-size: 14px; }
 /* drummers read the grid, not chord names */
 .mp-stage--drums .mp-chord-now, .mp-stage--drums .mp-chord-next, .mp-stage--drums .mp-next-in { display: none !important; }
 .mp-body--drums { display: grid; grid-template-columns: var(--kit-w, 340px) 12px minmax(0, 1fr); gap: 0 6px;

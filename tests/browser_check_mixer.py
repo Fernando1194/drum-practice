@@ -38,7 +38,7 @@ with sync_playwright() as p:
     pg.goto("http://127.0.0.1:7872/?__theme=dark")
     pg.wait_for_selector("text=Paste a song link above")
     pg.get_by_label("I play").click(); pg.get_by_role("option", name="guitar").click()
-    pg.get_by_text("Use an audio file instead").click()
+    pg.get_by_text("Or upload an audio file").click()
     pg.locator("input[type=file]").set_input_files(str(OUT / "mx_song.wav"))
     time.sleep(1.5)
     pg.get_by_role("button", name="Analyze song").click()

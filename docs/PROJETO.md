@@ -9,7 +9,7 @@ as batidas, acha padrões e passos, e oferece um player com kit, grade, modo Ste
 Hero" para bateria eletrônica via MIDI. O código também transcreve outros instrumentos, mas essa
 parte está congelada e escondida (`MUSIC_PRACTICE_ALL_INSTRUMENTS=1` mostra).
 
-Estado atual: **v24** (02/10/2026), primeira versão publicada no GitHub. Foco: bateria.
+Estado atual: **v25** (02/10/2026), publicado no GitHub. Foco: bateria.
 
 ---
 
@@ -333,6 +333,7 @@ python tests/benchmark_mdb.py drum_only             # precisão real (precisa do
 | v18 | Padrões repetidos (grooves, viradas, únicos) com cores, faixa da música e loop por padrão; regra das três mãos trata prato duplicado |
 | v19 | Padrões mais tolerantes (pesos + agrupamento) e modo Steps: a música em poucos passos que se repetem |
 | v20 | Alça para escolher quantas linhas de partitura ver à frente |
+| v25 | Página inteira no visual do player (tema escuro único, amarelo de destaque), título e números da música no topo do player, campos desnecessários removidos (instrumento, caixas de seleção, áudios duplicados, explicações) |
 | v24 | Bateria separada com o modelo de bateria do htdemucs_ft (melhor que o 6s em bumbo, caixa, pratos e tons) |
 | v23 | Bumbo ouvido duas vezes vira um só (caixa/chimbal 'eco' do bumbo) |
 | v22 | Grade guiada pela bateria (alinhamento, tempo 1, andamento dobrado) e Demucs repetível |

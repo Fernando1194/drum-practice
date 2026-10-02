@@ -35,8 +35,7 @@ with sync_playwright() as p:
     pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.goto("http://127.0.0.1:7866/?__theme=dark")
     pg.wait_for_selector("text=Paste a song link above")
-    assert pg.get_by_label("I play").input_value() == "drums"   # drums-only app: preselected
-    pg.get_by_text("Use an audio file instead").click()
+    pg.get_by_text("Or upload an audio file").click()
     pg.locator("input[type=file]").set_input_files(str(OUT / "dr_song.wav"))
     time.sleep(1.5)
     pg.get_by_role("button", name="Analyze song").click()
@@ -273,8 +272,7 @@ with sync_playwright() as p:
           f"row {r0:.1f}->{r1:.1f}px, {lz}")
     kit_before_reload = W(".mp-kit")
     pg.reload()
-    assert pg.get_by_label("I play").input_value() == "drums"
-    pg.get_by_text("Use an audio file instead").click()
+    pg.get_by_text("Or upload an audio file").click()
     pg.locator("input[type=file]").set_input_files(str(OUT / "dr_song2.wav")); time.sleep(1.5)
     pg.get_by_role("button", name="Analyze song").click()
     pg.wait_for_selector(".mp-player--drums[data-ready] .mp-kit-svg", timeout=300000); time.sleep(1.0)

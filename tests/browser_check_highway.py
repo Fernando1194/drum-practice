@@ -80,8 +80,7 @@ with sync_playwright() as p:
     pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.goto("http://127.0.0.1:7874/?__theme=dark")
     pg.evaluate("() => localStorage.clear()")
-    assert pg.get_by_label("I play").input_value() == "drums"
-    pg.get_by_text("Use an audio file instead").click()
+    pg.get_by_text("Or upload an audio file").click()
     pg.locator("input[type=file]").set_input_files(str(OUT / "hw_song.wav")); time.sleep(1.5)
     pg.get_by_role("button", name="Analyze song").click()
     pg.wait_for_selector(".mp-player--drums[data-ready] .mp-hw", state="attached", timeout=300000)

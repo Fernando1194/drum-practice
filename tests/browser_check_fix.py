@@ -39,8 +39,7 @@ with sync_playwright() as p:
     pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.goto("http://127.0.0.1:7869/")
     pg.wait_for_selector("text=Paste a song link above")
-    assert pg.get_by_label("I play").input_value() == "drums"   # drums-only app: preselected
-    pg.get_by_text("Use an audio file instead").click()
+    pg.get_by_text("Or upload an audio file").click()
     pg.locator("input[type=file]").set_input_files(str(OUT / "fx_song.wav"))
     time.sleep(1.5)
     pg.get_by_role("button", name="Analyze song").click()
