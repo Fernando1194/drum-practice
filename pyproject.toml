@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drum-practice"
+version = "0.24.0"
+description = "Turn any song into a drum lesson for your electronic kit: drum separation, transcription, patterns, practice steps and a MIDI highway."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Fernando Filho"}]
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "librosa>=0.10",
+  "soundfile",
+  "gradio>=6",
+  "yt-dlp",
+  "basic-pitch",
+  "onnxruntime",
+  # resampy (used by basic-pitch) imports pkg_resources, which newer setuptools dropped
+  "setuptools<81",
+  "pretty_midi",
+]
+
+[project.optional-dependencies]
+# Stem separation. Pinned below torchaudio 2.9, which moved audio saving to
+# torchcodec and is reported to break Demucs 4.0.1 file output.
+separation = ["demucs==4.0.1", "torch<2.9", "torchaudio<2.9"]
+# Better time-stretch quality. Also needs the rubberband binary (see README).
+hq-stretch = ["pyrubberband"]
+# Accurate drum transcription (neural network trained on real music). Uses the PyTorch you
+# already have from [separation]; installed with --no-deps so it can't change torch.
+# uv pip install --no-deps "adtof-pytorch @ git+https://github.com/xavriley/ADTOF-pytorch.git"
+dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/Fernando1194/drum-practice"
+
+[project.scripts]
+drum-practice = "musicpractice.app:main"
+music-practice = "musicpractice.app:main"
+
+[tool.setuptools.packages.find]
+include = ["musicpractice*"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning", "ignore::FutureWarning"]
+
+[tool.setuptools.package-data]
+musicpractice = ["ui/*.js", "ui/*.css"]

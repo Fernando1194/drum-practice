@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+build/
+dist/
+# audio and models never go in the repo
+*.wav
+*.flac
+*.mp3
+*.th
+*.zip
+out/
