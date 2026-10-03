@@ -18,7 +18,7 @@ from ..core.models import Song
 from ..plugins import drum_edit as DE
 from ..plugins.drum_tab import drum_bar_grids, hit_cells, pieces_used
 from ..plugins.drums import COLORS, CYMBALS, LABELS, PIECES, SHORT
-from ..plugins.patterns import bar_patterns, runs
+from ..plugins.patterns import bar_patterns, beat_figures, runs
 from ..plugins.tab import TUNINGS, tab_bar_grids
 from .kit import kit_svg
 
@@ -63,7 +63,8 @@ def section_label(s: dict) -> str:
 def _bar_html(i: int, chords: list[str], grid: list[list[str]] | None,
               names: list[str], slots: int, colors: list[str] | None = None,
               cells: dict | None = None, pieces: list[str] | None = None,
-              used: set[str] | None = None, tag: tuple | None = None) -> str:
+              used: set[str] | None = None, tag: tuple | None = None,
+              figs: list | None = None) -> str:
     chord_txt = html.escape(" ".join(c for c in chords if c != "N")) or "&nbsp;"
     # tag = (pattern index, short label, color, title): which repeated pattern this bar plays
     badge = (f'<span class="mp-pat-badge" title="{html.escape(tag[3])}">{tag[1]}</span>'
@@ -100,9 +101,15 @@ def _bar_html(i: int, chords: list[str], grid: list[list[str]] | None,
             row_open(r)
             + "".join(cell(c, r, slot) for slot, c in enumerate(row)) + "</div>"
             for r, row in enumerate(grid))
+        # figs = per beat (figure index, letter, color, title) or None: the one-beat figure
+        figrow = ""
+        if figs:
+            figrow = ('<div class="mp-figrow" style="--beats:%d">' % len(figs) + "".join(
+                f'<b class="mp-fig" data-f="{f[0]}" style="--fc:{f[2]}" title="{html.escape(f[3])}">{f[1]}</b>'
+                if f else '<b class="mp-fig mp-fig--rest"></b>' for f in figs) + "</div>")
         body = (f'<div class="mp-tab"><div class="mp-strings">{labels}</div>'
                 f'<div class="mp-grid" style="--slots:{len(grid[0])};--beats:{len(grid[0]) // 4}">'
-                f'{rows}<div class="mp-cursor"></div></div></div>')
+                f'{rows}<div class="mp-cursor"></div></div>{figrow}</div>')
     pat = f' data-pat="{tag[0]}" style="--pc:{tag[2]}"' if tag else ""
     return (f'<div class="mp-bar{" has-pat" if tag else ""}" data-i="{i}"{pat} '
             f'title="Bar {i + 1}: click to jump here">{head}{body}</div>')
@@ -263,6 +270,72 @@ def _patterns(rows, grids, bars, duration) -> tuple[list, str, dict, str]:
     return tags, html_, js, steps_html
 
 
+FIG_PIECES = ("crash", "ride", "hihat", "tom_high", "tom_mid", "tom_floor", "snare", "kick")
+
+
+def _fig_glyph(cells: list[list[str]], rows: list[str]) -> str:
+    """A tiny drawing of a one-beat figure: one line per piece played, 4 sixteenth columns."""
+    used = [p for p in FIG_PIECES if p in rows and any(cells[rows.index(p)])]
+    if not used:
+        return ""
+    h = 5 * len(used) + 1
+    dots = "".join(
+        f'<circle cx="{4 + 8 * s}" cy="{3 + 5 * y}" r="2.2" fill="{COLORS[p]}"/>'
+        for y, p in enumerate(used) for s, c in enumerate(cells[rows.index(p)]) if c)
+    ticks = "".join(f'<line x1="{4 + 8 * s}" x2="{4 + 8 * s}" y1="0" y2="{h}" stroke="currentColor" '
+                    f'stroke-opacity="{.35 if s == 0 else .12}"/>' for s in range(4))
+    return (f'<svg class="mp-fig-glyph" viewBox="0 0 32 {h}" width="32" height="{h}" aria-hidden="true">'
+            f'{ticks}{dots}</svg>')
+
+
+def _fig_words(cells: list[list[str]], rows: list[str]) -> str:
+    """'kick on 1, hi-hat on 1 and &' for a figure's tooltip."""
+    pos = ("the beat", "e", "&", "a")
+    parts = []
+    for p in FIG_PIECES[::-1]:
+        if p in rows:
+            on = [pos[s] for s, c in enumerate(cells[rows.index(p)]) if c]
+            if on:
+                parts.append(f'{LABELS[p].lower()} on {", ".join(on)}')
+    return "; ".join(parts) or "rest"
+
+
+def _figures(rows, grids) -> tuple[list, str]:
+    """Per-bar list of beat figures + the 'Beats' strip: one chip per figure (letter, drawing,
+    count). Click a chip to see where that figure is played."""
+    res = beat_figures(rows, grids)
+    figs = res["figures"]
+    info = []
+    for f in figs:
+        b, k = f["rep"]
+        cells = [row[4 * k:4 * k + 4] for row in grids[b]]
+        info.append((cells, _fig_words(cells, rows)))
+    per_bar = []
+    for ids in res["ids"]:
+        out = []
+        for fid in ids:
+            if fid >= 0:
+                out.append((fid, figs[fid]["letter"], figs[fid]["color"],
+                            f'Beat figure {figs[fid]["letter"]}: {info[fid][1]} (played {figs[fid]["n"]} times)'))
+            elif fid == -2:
+                out.append((-2, "·", "#9aa3ae", "A beat played only once"))
+            else:
+                out.append(None)
+        per_bar.append(out)
+    if not figs:
+        return per_bar, ""
+    total = sum(f["n"] for f in figs)
+    top = sum(f["n"] for f in figs[:6])
+    chips = "".join(
+        f'<button type="button" class="mp-fig-chip" data-f="{k}" aria-pressed="false" style="--fc:{f["color"]}" '
+        f'title="{html.escape(info[k][1])}: click to see where it is played">'
+        f'<b>{f["letter"]}</b>{_fig_glyph(info[k][0], rows)}<i>×{f["n"]}</i></button>'
+        for k, f in enumerate(figs))
+    lead = (f'{len(figs)} beat figure{"s" if len(figs) != 1 else ""}'
+            + (f', the first 6 are {100 * top / total:.0f}% of the song' if len(figs) > 6 else ""))
+    return per_bar, (f'<div class="mp-pats-row mp-figs"><span class="mp-pats-k">{lead}</span>{chips}</div>')
+
+
 def _fix_data(song: Song) -> dict:
     """What the 'Fix transcription' panel needs: candidates with scores (for live hit counts
     while a slider moves) and the thresholds/edits in force."""
@@ -412,12 +485,17 @@ def build_player(song: Song, instrument: str, sources: list[tuple[str, str, str]
         for k, s in enumerate(sections))
 
     tags, pats_html, steps_html = [None] * n, "", ""
+    bar_figs: list = [None] * n
     if is_drums and grids:
         tags, pats_html, pat_js, steps_html = _patterns(rows, grids, bars, duration)
         data["drums"]["steps"] = pat_js or None
+        bar_figs, figs_html = _figures(rows, grids)
+        pats_html = (pats_html[:-len("</div>")] + figs_html + "</div>"
+                     if pats_html else (f'<div class="mp-pats">{figs_html}</div>' if figs_html else ""))
     sheet = "".join(
         _bar_html(i, chart[i] if i < len(chart) else [], grids[i] if has_tab else None,
-                  names, 16, row_colors, cells, rows, used, tags[i] if i < len(tags) else None)
+                  names, 16, row_colors, cells, rows, used, tags[i] if i < len(tags) else None,
+                  bar_figs[i] if i < len(bar_figs) else None)
         for i in range(n))
     sheet_cls = "mp-sheet" + ("" if has_tab else " mp-sheet--chords") + \
         (" mp-sheet--drums" if is_drums else "")

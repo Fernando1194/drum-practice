@@ -9,7 +9,7 @@ as batidas, acha padrões e passos, e oferece um player com kit, grade, modo Ste
 Hero" para bateria eletrônica via MIDI. O código também transcreve outros instrumentos, mas essa
 parte está congelada e escondida (`MUSIC_PRACTICE_ALL_INSTRUMENTS=1` mostra).
 
-Estado atual: **v25** (02/10/2026), publicado no GitHub. Foco: bateria.
+Estado atual: **v26** (03/10/2026), publicado no GitHub. Foco: bateria.
 
 ---
 
@@ -227,6 +227,29 @@ mostra um compasso só (o groove do passo, desenhado uma vez); a cada repetiçã
 ao início do MESMO compasso com um "varrido" suave, o contador sobe ("2 de 3"), bolinhas da frase
 se preenchem, "Passada 1 de 8", lista de passos com ✓ nos concluídos e aviso do próximo.
 
+### 4.7b Figuras de um tempo (v26)
+Um nível abaixo dos padrões: cada tempo (4 semicolcheias) de cada compasso é agrupado com os
+tempos que soam iguais, e o compasso vira uma sequência de letras: rock simples = "A B C B"
+(A = bumbo + chimbal, B = caixa + chimbal, C = bumbo no tempo e no "e" + chimbal). Mesmos pesos
+dos padrões, mas aqui o crash conta (0,5): "bumbo + crash" é outro movimento.
+Medido nas gravações rock/pop/funk do MDB Drums (batidas das anotações), agrupamento da
+transcrição contra o das anotações (Rand ajustado):
+
+| Corte | Faixa de bateria | Mix | Figuras por trecho (anotação / IA, faixa) |
+|---|---|---|---|
+| 0,2 | 0,83 | 0,63 | 9,3 / 9,3 |
+| **0,3 (escolhido)** | **0,84** | **0,72** | 7,7 / 7,5 |
+| 0,4 | 0,83 | 0,73 | 6,1 / 5,9 |
+
+0,3 e não 0,4: com 0,4 "bumbo no tempo" e "bumbo no tempo e no e" (distância 0,33) viram a
+mesma figura, e essa diferença o baterista tem que tocar; um chimbal perdido (0,25) continua na
+figura certa. As 6 figuras mais comuns cobrem 95% dos tempos.
+**Na tela:** uma letra colorida sob cada tempo da grade; na faixa de padrões, um chip por figura
+com a letra, um desenho de 4 semicolcheias e quantas vezes aparece; clicar acende todos os tempos
+daquela figura. "·" = tempo que só aparece uma vez.
+Limite [Provável]: em música com muitas variações de chimbal aberto/ghost notes, a IA erra essas
+notas e pode criar figuras a mais (mix 0,72 contra 0,84 na faixa isolada).
+
 ### 4.8 Testado e descartado
 - **Chimbal aberto x fechado pelo som:** não generaliza entre músicas (a 70% de precisão, quase
   nenhum aberto encontrado). Não entrou no app.
@@ -302,7 +325,7 @@ seção; coach com LLM.
 ## 8. Testes
 
 ```bash
-python -m pytest -q                                 # 42 testes, ~3 min, músicas sintéticas
+python -m pytest -q                                 # 47 testes, ~3 min, músicas sintéticas
 python tests/browser_check.py      /tmp/out         # player (guitarra)
 python tests/browser_check_drums.py /tmp/out        # kit, grade, cores, pauta contínua
 python tests/browser_check_mixer.py /tmp/out        # mixer e sincronia das faixas
@@ -334,6 +357,7 @@ python tests/benchmark_mdb.py drum_only             # precisão real (precisa do
 | v19 | Padrões mais tolerantes (pesos + agrupamento) e modo Steps: a música em poucos passos que se repetem |
 | v20 | Alça para escolher quantas linhas de partitura ver à frente |
 | v25 | Página inteira no visual do player (tema escuro único, amarelo de destaque), título e números da música no topo do player, campos desnecessários removidos (instrumento, caixas de seleção, áudios duplicados, explicações) |
+| v26 | Figuras de um tempo: cada tempo do compasso recebe uma letra (A = bumbo + chimbal, B = caixa + chimbal...), chips com desenho e contagem, clique acende onde a figura é tocada |
 | v24 | Bateria separada com o modelo de bateria do htdemucs_ft (melhor que o 6s em bumbo, caixa, pratos e tons) |
 | v23 | Bumbo ouvido duas vezes vira um só (caixa/chimbal 'eco' do bumbo) |
 | v22 | Grade guiada pela bateria (alinhamento, tempo 1, andamento dobrado) e Demucs repetível |

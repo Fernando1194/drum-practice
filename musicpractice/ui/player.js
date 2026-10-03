@@ -361,6 +361,18 @@
       audio.currentTime = barStart(parseInt(el.dataset.i, 10)); lastT = audio.currentTime - 0.002; render(true);
     }, sig));
 
+    // ---------- beat figures: show every beat that plays the same one-beat figure ----------
+    const figChips = [...root.querySelectorAll(".mp-fig-chip")];
+    const figEls = [...root.querySelectorAll(".mp-sheet .mp-fig")];
+    function focusFigure(k) {          // k: figure index as a string, or null to clear
+      if (k === null) delete root.dataset.figFocus; else root.dataset.figFocus = k;
+      figChips.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.f === k)));
+      figEls.forEach((el) => el.classList.toggle("is-fig", k !== null && el.dataset.f === k));
+    }
+    figChips.forEach((b) => b.addEventListener("click", () => {
+      focusFigure(root.dataset.figFocus === b.dataset.f ? null : b.dataset.f);
+    }, sig));
+
     // ---------- steps view: the song as a few steps that repeat ----------
     // Shows one bar: the groove of the current step, drawn once. Every time the groove comes
     // round again the playhead sweeps back to the start of the SAME bar and a counter ticks

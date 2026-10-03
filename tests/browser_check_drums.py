@@ -63,6 +63,18 @@ with sync_playwright() as p:
                  gap: g1.top === g0.top ? Math.round(g1.left - g0.right) : null }}; }}""")
     check("names appear once per line and bars of a line touch (one continuous staff)",
           ls["lineOk"] and ls["labelsOnlyAtStart"] and 0 < ls["starts"] < ls["n"] and ls["gap"] is not None and abs(ls["gap"]) <= 1, str(ls))
+    fg = pg.evaluate(f"""() => {{ const P = {P}; const bars = [...P.querySelectorAll('.mp-sheet > .mp-bar')];
+        const rowsOk = bars.every(b => b.querySelectorAll('.mp-figrow .mp-fig').length === b.querySelector('.mp-grid').style.getPropertyValue('--beats') * 1);
+        const chip = P.querySelector('.mp-fig-chip'); const k = chip.dataset.f; chip.click();
+        const lit = [...P.querySelectorAll('.mp-sheet > .mp-bar .mp-fig.is-fig')];
+        const want = [...P.querySelectorAll('.mp-sheet > .mp-bar .mp-fig')].filter(e => e.dataset.f === k).length;
+        const n = parseInt(chip.querySelector('i').textContent.replace('×', ''), 10);
+        const on = P.dataset.figFocus === k && chip.getAttribute('aria-pressed') === 'true';
+        chip.click();
+        return {{ rowsOk, chips: P.querySelectorAll('.mp-fig-chip').length, lit: lit.length, want, n, on,
+                 off: !P.dataset.figFocus && !P.querySelector('.mp-fig.is-fig') }}; }}""")
+    check("beat figures: a letter under every beat; a chip lights exactly its beats and toggles off",
+          fg["rowsOk"] and fg["chips"] >= 2 and fg["on"] and fg["off"] and fg["lit"] == fg["want"] == fg["n"], str(fg))
     chord_visible = pg.evaluate(f"() => getComputedStyle({P}.querySelector('.mp-chord-now')).display !== 'none'")
     check("no chord name shown in drum mode", not chord_visible)
     kf = pg.evaluate("""() => { const n = new Set(); const walk = rs => { for (const r of rs) {

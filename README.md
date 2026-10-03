@@ -26,6 +26,10 @@ the numbers below say how good, and the app lets you fix what it gets wrong.
   next line during the last beat of a line. Drag the grip under the grid to see 1 to 8 lines ahead.
 - **Patterns**: the grooves and fills the song is made of ("Groove 1 x18, Fill 1 x8"), a colored
   band with one square per bar, and a click to show only the bars of one pattern.
+- **Beat figures**: one level down, every beat gets a letter: plain rock reads "A B C B"
+  (A = kick + hi-hat, B = snare + hi-hat, C = kick on the beat and the "&"). A chip per figure
+  shows a tiny drawing of its four 16ths and how often it's played; click it to light up every
+  beat that plays it. Most songs come down to a handful of figures.
 - **Steps**: the song as a handful of steps instead of 120 bars. A step is a groove played a
   few times plus the fill that closes the phrase; the view shows that groove once, and every
   time it comes round again the playhead sweeps back and a counter goes up ("2 of 3", "pass 1 of 6").
@@ -143,7 +147,7 @@ musicpractice/
     drum_echo.py     a kick heard twice (as a weak snare/hi-hat) becomes one hit
     drum_grid.py     bar grid moved onto the drummer (timing, beat 1, half speed)
     drum_tab.py      drum grid (x/o per 16th note)
-    patterns.py      grooves, fills and practice steps
+    patterns.py      grooves, fills, practice steps and one-beat figures
   ui/                player (HTML/CSS/JS): kit, grid, steps, highway, mixer, editor
 tests/               pytest on synthetic songs, browser checks (Playwright), MDB benchmark
 docs/PROJETO.md      design notes, decisions and every measurement (Portuguese)
@@ -183,7 +187,7 @@ This project's code: [MIT](LICENSE). Its dependencies keep their own licenses, n
 **Drum Practice** transforma qualquer música (inclusive ao vivo, sem partitura oficial) numa aula
 de bateria para tocar na bateria eletrônica. Cole o link: o app separa a bateria, transcreve cada
 batida, acha os grooves e viradas, e abre um player com o kit visto de cima, a grade de bateria,
-o modo **Steps** (a música em poucos passos que se repetem) e o **Highway** (estilo Guitar Hero)
+as **figuras de um tempo** (cada tempo do compasso vira uma letra, para ver as batidas que se repetem), o modo **Steps** (a música em poucos passos que se repetem) e o **Highway** (estilo Guitar Hero)
 tocado no seu kit via MIDI. Tudo roda no seu computador.
 
 Precisão medida em 23 gravações reais anotadas à mão: bumbo 0,93, caixa 0,77, chimbal 0,86,

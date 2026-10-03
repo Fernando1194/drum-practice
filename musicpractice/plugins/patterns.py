@@ -38,9 +38,9 @@ MAIN_MIN = 3        # a pattern played this many times is a groove a step can be
 PHRASE_MIN = 4      # a fill ends a step once the step has this many bars
 
 
-def _marks(grid: list[list[str]], rows: list[str]) -> dict:
-    return {(GROUP.get(rows[r], rows[r]), s): WEIGHT[rows[r]]
-            for r, row in enumerate(grid) if rows[r] in WEIGHT
+def _marks(grid: list[list[str]], rows: list[str], weight: dict = WEIGHT) -> dict:
+    return {(GROUP.get(rows[r], rows[r]), s): weight[rows[r]]
+            for r, row in enumerate(grid) if rows[r] in weight
             for s, c in enumerate(row) if c}
 
 
@@ -139,6 +139,107 @@ def steps(ids: list[int], patterns: list[dict]) -> list[dict]:
             merged.append({"pattern": ph["pattern"], "bars": list(ph["bars"]),
                            "phrase": len(ph["bars"]), "reps": ph["reps"], "times": 1})
     return merged
+
+
+FIG_WEIGHT = {**WEIGHT, "crash": 0.5}   # within one beat, "kick + crash" is its own thing to play
+FIG_CUT = 0.3       # beat figures: clustering threshold (see beat_figures)
+FIG_COLORS = ("#f2c14e", "#6ec1e4", "#f08a5d", "#9bd26a", "#c49bf0", "#f27aa9", "#4fd1b4",
+              "#e0a96d")
+
+
+def beat_figures(rows: list[str], grids: list[list[list[str]]], cut: float = FIG_CUT) -> dict:
+    """The same idea one level down: every beat (4 sixteenths) of every bar is grouped with the
+    beats that sound like it, so a bar of plain rock reads "A B A B" (A = kick + hi-hat, B =
+    snare + hi-hat) and the whole song is a handful of figures repeated.
+
+    Same marks and weights as the bar patterns (toms as one), except that the crash counts
+    here: in a bar it is an accent on the same groove, but a beat with kick + crash is a
+    different motion from kick + hi-hat. Measured on the
+    rock/pop/funk recordings of MDB Drums (beats from the annotations), grouping of the
+    transcription vs grouping of the hand annotations (adjusted Rand index): 0.83 on the drum
+    stem and 0.72 on the full mix at a cut of 0.3 (0.83 / 0.73 at 0.4, 0.83 / 0.63 at 0.2); about
+    7 figures per 30 s excerpt, the six most common covering 95% of the beats. 0.3 rather than 0.4
+    because 0.4 merges "kick on the beat" with "kick on the beat and on the &" (distance 0.33),
+    a difference the drummer has to play; a missed hi-hat 8th (0.25) still stays in its figure.
+
+    Returns {"ids": [[figure per beat] per bar] (-1 = nothing played, -2 = heard only once),
+             "figures": [{"n", "rep": (bar, beat), "letter", "color"}...] most common first}."""
+    marks, where = [], []
+    for b, g in enumerate(grids):
+        n_beats = len(g[0]) // 4 if g and g[0] else 0
+        for k in range(n_beats):
+            sub = [row[4 * k:4 * k + 4] for row in g]
+            marks.append(_marks(sub, rows, FIG_WEIGHT))
+            where.append((b, k))
+    ids = [[-1] * (len(g[0]) // 4 if g and g[0] else 0) for g in grids]
+    if not marks:
+        return {"ids": ids, "figures": []}
+    from scipy.cluster.hierarchy import fcluster, linkage
+    nz = [i for i, m in enumerate(marks) if m]
+    # identical beats are the rule: cluster the distinct ones, weighted by how often they occur
+    keyed: dict[tuple, list[int]] = {}
+    for i in nz:
+        keyed.setdefault(tuple(sorted(marks[i].items())), []).append(i)
+    uniq = list(keyed.values())
+    groups: list[list[int]] = []
+    if len(uniq) == 1:
+        groups = [uniq[0]]
+    elif uniq:
+        # average linkage on the full set = UPGMA; repeat each distinct beat by its count would be
+        # O(n^2) on a long song, so weight it instead (same result for average linkage)
+        lab = _weighted_upgma([marks[u[0]] for u in uniq], [len(u) for u in uniq], cut)
+        by: dict[int, list[int]] = {}
+        for u, l in zip(uniq, lab):
+            by.setdefault(l, []).extend(u)
+        groups = list(by.values())
+    groups.sort(key=lambda g: (-len(g), min(g)))
+    figures = []
+    for members in groups:
+        if len(members) < 2:
+            b, k = where[members[0]]
+            ids[b][k] = -2
+            continue
+        sample = members if len(members) <= 400 else members[::len(members) // 400 + 1]
+        rep = min(sample, key=lambda i: sum(distance(marks[i], marks[j]) for j in sample))
+        f = len(figures)
+        figures.append({"n": len(members), "rep": where[rep],
+                        "letter": chr(65 + f) if f < 26 else f"Z{f - 25}",
+                        "color": FIG_COLORS[f % len(FIG_COLORS)]})
+        for i in members:
+            b, k = where[i]
+            ids[b][k] = f
+    return {"ids": ids, "figures": figures}
+
+
+def _weighted_upgma(points: list[dict], weights: list[int], cut: float) -> list[int]:
+    """Average-linkage clustering where point i stands for weights[i] identical copies, cut at
+    `cut`. Returns a cluster label per point. Equivalent to scipy's 'average' on the expanded
+    set, without building an n x n matrix for every beat of the song."""
+    n = len(points)
+    D = np.zeros((n, n))
+    for a in range(n):
+        for b in range(a + 1, n):
+            D[a, b] = D[b, a] = distance(points[a], points[b])
+    W = np.asarray(weights, float)
+    S = D * np.outer(W, W)                 # sum of distances between members of two clusters
+    size = W.copy()
+    alive = np.ones(n, bool)
+    label = np.arange(n)
+    while alive.sum() > 1:
+        A = S / np.outer(size, size)
+        A[~alive, :] = np.inf
+        A[:, ~alive] = np.inf
+        np.fill_diagonal(A, np.inf)
+        i, j = np.unravel_index(int(np.argmin(A)), A.shape)
+        if A[i, j] > cut:
+            break
+        S[i, :] += S[j, :]
+        S[:, i] += S[:, j]
+        S[i, i] = 0.0
+        size[i] += size[j]
+        alive[j] = False
+        label[label == j] = i
+    return [int(x) for x in label]
 
 
 def runs(bars: list[int]) -> str:

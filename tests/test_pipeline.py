@@ -526,3 +526,30 @@ def test_finer_drum_stem_is_swapped_in_once_and_drums_redone(tmp_path, monkeypat
     song.artifacts.pop("drums:stem_model"); song.save()
     song, log = c.process(str(tmp_path / "song.wav"), "drums")
     assert song.artifacts.get("drums:stem_ft_failed") and any("htdemucs_ft" in n for n in log.notes)
+
+
+def test_beat_figures_split_the_bar_into_repeated_beats():
+    """A rock bar is a few one-beat figures: kick + hat, snare + hat, kick on 1 and & + hat;
+    the fill is its own figure, and so is kick + crash (the crash after each fill)."""
+    from musicpractice.plugins.drum_tab import drum_bar_grids
+    from musicpractice.plugins.drums import PIECES
+    from musicpractice.plugins.patterns import beat_figures
+    hits, beat = SD.groove(16, 120, ride_from=None)
+    H = [{"time": t, "piece": p} for t, p in hits]
+    beats = [i * beat for i in range(16 * 4)]
+    rows, grids = drum_bar_grids(H, beats, beats[::4], 16 * 4 * beat, rows=list(PIECES))
+    res = beat_figures(rows, grids)
+    assert [f["n"] for f in res["figures"]] == [28, 13, 12, 8, 3]
+    snare, kick, kick_and, toms, crash = range(5)
+    assert res["ids"][0] == [kick, snare, kick_and, snare]          # plain groove bar
+    assert res["ids"][4] == [crash, snare, kick_and, snare]         # bar after a fill
+    assert res["ids"][3] == [kick, snare, toms, toms]               # fill bar (beat 1: no hat on &)
+    assert [f["letter"] for f in res["figures"]] == ["A", "B", "C", "D", "E"]
+    # one missed hi-hat 8th doesn't make a new figure; a missed kick on the & does
+    t3 = 5 * 4 * beat + 2.5 * beat
+    drop_hat = [h for h in H if not (abs(h["time"] - 5 * 4 * beat - 0.5 * beat) < 1e-6 and h["piece"] == "hihat")]
+    rows, grids = drum_bar_grids(drop_hat, beats, beats[::4], 16 * 4 * beat, rows=list(PIECES))
+    assert beat_figures(rows, grids)["ids"][5][0] == kick
+    drop_kick = [h for h in H if not (abs(h["time"] - t3) < 1e-6 and h["piece"] == "kick")]
+    rows, grids = drum_bar_grids(drop_kick, beats, beats[::4], 16 * 4 * beat, rows=list(PIECES))
+    assert beat_figures(rows, grids)["ids"][5][2] != kick_and

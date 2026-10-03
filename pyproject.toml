@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "drum-practice"
-version = "0.25.0"
+version = "0.26.0"
 description = "Turn any song into a drum lesson for your electronic kit: drum separation, transcription, patterns, practice steps and a MIDI highway."
 readme = "README.md"
 license = {text = "MIT"}
