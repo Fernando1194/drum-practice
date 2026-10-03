@@ -98,9 +98,10 @@ footer {{ display: none !important; }}
 #mp-go {{ min-height: 44px; font-weight: 700; font-size: 15px; border-radius: 8px; }}
 #mp-input .mp-upload, #mp-input .mp-upload > * {{ background: transparent !important; border: 0 !important;
   box-shadow: none !important; }}
-#mp-input .mp-upload .label-wrap {{ padding: 4px 2px !important; }}
-#mp-input .mp-upload .label-wrap, #mp-input .mp-upload .label-wrap * {{ color: {MUTED} !important; font-size: 13px; }}
-#mp-input .mp-upload .label-wrap:hover * {{ color: {INK} !important; }}
+#mp-input .mp-upload .label-wrap {{ padding: 6px 10px !important; border-radius: 8px; background: {STAGE_2} !important;
+  width: auto !important; gap: 10px; }}
+#mp-input .mp-upload .label-wrap, #mp-input .mp-upload .label-wrap * {{ color: {INK} !important; font-size: 14px; }}
+#mp-input .mp-upload .label-wrap:hover {{ background: #33425a !important; }}
 #mp-input .mp-upload table, #mp-input .mp-upload tr, #mp-input .mp-upload td,
 #mp-input .mp-upload .file-preview-holder, #mp-input .mp-upload .wrap {{ background: {STAGE_2} !important;
   color: {INK} !important; border-color: {LINE} !important; }}
@@ -111,6 +112,9 @@ footer {{ display: none !important; }}
 #mp-notes ul {{ margin: 6px 0 2px; }}
 #mp-notes:empty {{ display: none; }}
 .mp-card {{ background: {STAGE} !important; border: 0 !important; border-radius: 14px !important; }}
-.mp-card > .label-wrap {{ padding: 12px 16px !important; }}
-.mp-card .label-wrap span {{ color: {INK}; font-weight: 600; }}
+.mp-card > .label-wrap {{ padding: 14px 18px !important; }}
+.mp-card .label-wrap span {{ color: {INK}; font-weight: 700; font-size: 15px; }}
+.mp-card > .label-wrap:hover {{ background: {STAGE_2} !important; border-radius: 14px; }}
+/* Gradio's fold arrows, in the accent color so folded panels stand out */
+#mp-input .mp-upload .label-wrap .icon, .mp-card > .label-wrap .icon {{ color: {ACCENT} !important; opacity: 1 !important; }}
 """

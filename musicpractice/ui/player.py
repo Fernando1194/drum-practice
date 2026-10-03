@@ -134,8 +134,10 @@ def _mixer_html(stems: list[str], mine: str | None) -> str:
             f'<button type="button" class="mp-m" aria-pressed="false" title="Mute {label}">M</button>'
             f'<button type="button" class="mp-s" aria-pressed="false" title="Solo {label} (hear only this)">S</button>'
             f'</div>')
-    return ('<details class="mp-mixer" open><summary>Mixer: raise an instrument to follow it, '
-            'lower it to play over it <span class="mp-mix-status">(loading tracks...)</span></summary>'
+    return ('<details class="mp-mixer" open><summary><b class="mp-mix-title">Mixer</b>'
+            '<span class="mp-mix-hint">raise an instrument to follow it, lower it to play over it</span>'
+            '<span class="mp-mix-status">(loading tracks...)</span>'
+            '<span class="mp-fold-state" aria-hidden="true"></span></summary>'
             '<div class="mp-strips">' + "".join(strips) + '</div></details>')
 
 
