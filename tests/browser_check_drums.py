@@ -80,7 +80,7 @@ with sync_playwright() as p:
     kf = pg.evaluate("""() => { const n = new Set(); const walk = rs => { for (const r of rs) {
         if (r.type === CSSRule.KEYFRAMES_RULE) n.add(r.name); if (r.cssRules) walk(r.cssRules); } };
         for (const sh of document.styleSheets) { try { walk(sh.cssRules); } catch (e) {} } return [...n]; }""")
-    needed = {"mp-punch", "mp-flash", "mp-bright", "mp-mark", "mp-mark-x", "mp-beat", "mp-downbeat"}
+    needed = {"mp-punch", "mp-flash", "mp-bright", "mp-beat", "mp-downbeat"}
     check("all player animations are registered by the browser", needed <= set(kf), f"missing {needed - set(kf)}")
     pg.wait_for_function(f"() => {P}.dataset.stemsReady === '1'", timeout=60000)
     g = pg.evaluate(f"() => JSON.parse({P}.dataset.gains)")
@@ -188,13 +188,16 @@ with sync_playwright() as p:
     ok = all(lo.get(k, 0) <= counts.get(k, 0) <= hi.get(k, 0) for k in set(lo) | set(hi) | {k for k, v in counts.items() if v})
     check("every detected hit flashed once while playing (incl. the downbeat we started on)", ok,
           f"flashed {dict((k, v) for k, v in counts.items() if v)} expected {lo}..{hi}")
-    pops = pg.evaluate(f"""() => {{ const r = {P};
-        const marks = [...r.querySelectorAll('.mp-row i[data-h]')];
-        let n = 0; marks.forEach(m => n += parseInt(m.dataset.pops || '0', 10));
-        return n; }}""")
-    kit_total = sum(counts.values())
-    check("grid marks pulse together with the kit (one pop per hit)", abs(pops - kit_total) <= 1,
-          f"{pops} mark pops vs {kit_total} kit flashes")
+    pw = pg.evaluate(f"""() => {{ const r = {P}, D = JSON.parse(r.dataset.mp), T = D.drums.hits.map(h => h[0]);
+        const marks = [...r.querySelectorAll('.mp-sheet > .mp-bar .mp-row i[data-h]')];
+        const inWin = (m, lo, hi) => m.dataset.h.split(',').some(k => T[+k] >= lo && T[+k] <= hi);
+        const sure = marks.filter(m => inWin(m, {start + 0.1}, {t_end - 0.1}));
+        const maybe = marks.filter(m => inWin(m, {start - 0.1}, {t_end + 0.1}));
+        const pops = marks.reduce((n, m) => n + (m.__pops || 0), 0);
+        return {{ pops, sure: sure.length, maybe: maybe.length,
+                  missed: sure.filter(m => (m.__pops || 0) !== 1).length }}; }}""")
+    check("every mark the playhead crossed pulsed exactly once", pw["missed"] == 0 and pw["sure"] <= pw["pops"] <= pw["maybe"],
+          str(pw))
     truth_win = {}
     for t, piece in truth:
         if start - 1e-3 <= t <= t_end:

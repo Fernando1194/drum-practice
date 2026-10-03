@@ -65,10 +65,23 @@
         (perPiece[K.pieces[p]] = perPiece[K.pieces[p]] || []).push(t);
       });
     }
+    // Restarting a CSS animation used to be "remove class, force a layout, add class": a full
+    // synchronous layout of the page on every hit, which made frames late and pulses missable.
+    // Now the class comes off by itself when the animation ends, so the next hit only adds it;
+    // a hit while it still runs rewinds the running animations instead (no layout either).
+    function restart(el) {
+      if (!el.classList.contains("is-hit")) { el.classList.add("is-hit"); return; }
+      const as = el.getAnimations({ subtree: true });
+      if (as.length) as.forEach((a) => { a.currentTime = 0; a.play(); });
+      else { el.classList.remove("is-hit"); requestAnimationFrame(() => el.classList.add("is-hit")); }
+    }
+    Object.values(kitEls).forEach((g) => g.addEventListener("animationend", (e) => {
+      if (e.target === g) g.classList.remove("is-hit");
+    }, sig));
     function flash(piece, vel) {
       const g = kitEls[piece]; if (!g) return;
       g.style.setProperty("--vel", (0.55 + 0.45 * vel).toFixed(2));
-      g.classList.remove("is-hit"); void g.getBBox(); g.classList.add("is-hit");
+      restart(g);
       g.dataset.hits = String((parseInt(g.dataset.hits || "0", 10)) + 1);  // for tests
     }
     // grid marks by hit index (a mark can hold several hits that quantize to the same 16th)
@@ -76,18 +89,58 @@
     root.querySelectorAll(".mp-row i[data-h]").forEach((m) => {
       m.dataset.h.split(",").forEach((k) => { markOf[+k] = m; });
     });
-    function pop(el, vel) {               // restart the CSS "impact" animation on an element
-      el.style.setProperty("--vel", (0.55 + 0.45 * vel).toFixed(2));
-      el.classList.remove("is-hit"); void el.offsetWidth; el.classList.add("is-hit");
+    // A grid mark's "impact": Web Animations on transform (+ a glow), run by the compositor, no
+    // class toggling and no forced layout. A new pop on a mark still pulsing starts over.
+    const calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const RING = "0 0 0 1.5px rgba(29, 39, 54, .55)";
+    function pop(el, vel) {
+      const s = (1 + 0.9 * (0.55 + 0.45 * vel)).toFixed(3);
+      const c = el.__c || (el.__c = (el.parentElement && el.parentElement.style.getPropertyValue("--c").trim()) || "#ffd640");
+      const x = el.classList.contains("mp-x");
+      const from = x ? { transform: calm ? "none" : `scale(${s})`, textShadow: `0 0 10px ${c}, 0 0 1px #1d2736` }
+                     : { transform: calm ? "none" : `scale(${s})`, filter: "brightness(1.25)", boxShadow: `${RING}, 0 0 14px 5px ${c}` };
+      const to = x ? { transform: "none", textShadow: "0 0 0 transparent, 0 0 0 transparent" }
+                   : { transform: "none", filter: "brightness(1)", boxShadow: `${RING}, 0 0 0 0 transparent` };
+      if (el.__anim) el.__anim.cancel();
+      el.__anim = el.animate([from, to], { duration: 360, easing: "cubic-bezier(.2, .9, .3, 1)" });
+      el.__pops = (el.__pops || 0) + 1;    // tests
     }
-    function kitHits(from, to) {           // flash every hit in (from, to]: kit piece + its grid mark
-      for (let i = lastLE(hitT, from) + 1; i < hitT.length && hitT[i] <= to; i++) {
-        flash(hitP[i], hitV[i]);
-        const m = markOf[i];
-        if (m) { pop(m, hitV[i]); m.dataset.pops = String((parseInt(m.dataset.pops || "0", 10)) + 1); }
-        if (STEPS) STEPS.hit(i, hitV[i]);
-      }
+    function kitHits(from, to) {           // the kit flashes when the hit SOUNDS (audio time)
+      for (let i = lastLE(hitT, from) + 1; i < hitT.length && hitT[i] <= to; i++) flash(hitP[i], hitV[i]);
     }
+    // Grid marks pop when the playhead CROSSES them, not at the hit's audio time: a hit up to
+    // half a 16th off the grid used to pulse visibly before or after the line reached it, so it
+    // looked like the line passed notes that didn't react. Per bar: its marks, by position.
+    const barMarks = [];
+    function marksOf(i) {
+      if (barMarks[i]) return barMarks[i];
+      const el = barEls[i], out = [];
+      if (el) el.querySelectorAll(".mp-row").forEach((row, r) => {
+        const cells = row.children, n = cells.length;
+        for (let s = 0; s < n; s++) {
+          const m = cells[s];
+          if (!m.dataset.h) continue;
+          const ks = m.dataset.h.split(",").map(Number);
+          out.push({ el: m, c: (s + 0.5) / n, k: ks[0], v: Math.max(...ks.map((k) => hitV[k] || 0.8)) });
+        }
+      });
+      out.sort((a, b) => a.c - b.c);
+      return (barMarks[i] = out);
+    }
+    let xBar = -1, xFrac = 0;               // where the playhead was on the last frame
+    function crossMarks(i, frac) {
+      const fire = (bar, lo, hi) => {
+        for (const m of marksOf(bar)) if (m.c > lo && m.c <= hi) {
+          pop(m.el, m.v);
+          if (STEPS) STEPS.hit(m.k, m.v);
+        }
+      };
+      if (i === xBar && frac >= xFrac) fire(i, xFrac, frac);
+      else if (i === xBar + 1) { fire(xBar, xFrac, 1); fire(i, -1, frac); }
+      // anything else is a jump (seek, loop, click): start fresh, pop nothing
+      xBar = i; xFrac = frac;
+    }
+    function resetCross(i, frac) { xBar = i; xFrac = frac; }
     function kitAnticipate(t) {
       const win = 60 / D.tempo;            // one beat of song time
       for (const piece in kitEls) {
@@ -604,6 +657,10 @@
           if (t >= b - 0.02) { wrap(); requestAnimationFrame(tick); return; }
         }
         if (K && t > lastT && t - lastT < 0.5) kitHits(lastT, t);
+        if (K && D.hasTab) {
+          const i = Math.max(lastLE(bars, t), 0), f = cursorFrac(i, t);
+          if (t > lastT && t - lastT < 0.5) crossMarks(i, f); else resetCross(i, f);
+        }
         if (t > lastT && t - lastT < 0.5) {                     // the playhead thumps on every beat
           const j = lastLE(beats, t);
           if (j >= 0 && beats[j] > lastT) {
@@ -619,6 +676,7 @@
           if (j >= 0 && beats[j] > lastT) click(audioCtx().currentTime, barSet.has(beats[j].toFixed(3)));
         }
       }
+      if (audio.paused && K && D.hasTab) { const i = Math.max(lastLE(bars, t), 0); resetCross(i, cursorFrac(i, t)); }
       lastT = t;
       if (M) syncFollowers(performance.now());
       if (K) kitAnticipate(t);

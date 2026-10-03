@@ -220,7 +220,7 @@ with sync_playwright() as p:
         await new Promise(res => {{ const f = () => {{ if (a.currentTime < D.bars[b + 1] + 0.3) requestAnimationFrame(f); else res(); }}; requestAnimationFrame(f); }});
         a.pause();
         const s2 = r.__mpSteps.state(), stage = r.querySelector('.mp-steps-stage');
-        const pops = [...stage.querySelectorAll('.mp-row i')].filter(i => i.classList.contains('is-hit')).length;
+        const pops = [...stage.querySelectorAll('.mp-row i')].filter(i => (i.__pops || 0) > 0).length;
         return {{ vis, n: S.steps.length, bars: D.bars.length, s1, s2, again: stage.classList.contains('is-again'), again0, pops,
                  chips: r.querySelectorAll('.mp-step').length, nowChip: !!r.querySelector('.mp-step.is-now'),
                  dots: r.querySelectorAll('.mp-steps-dots i').length }}; }}""")

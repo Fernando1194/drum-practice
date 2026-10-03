@@ -205,9 +205,7 @@
 .mp-player--drums .mp-bar.in-loop:not(.is-now) { background: #f0f4fb; }
 .mp-player--drums .mp-cursor { background: #1d2736; }
 /* grid: the mark that just sounded pops in its own color, in step with the kit */
-.mp-player--drums .mp-sheet--drums .mp-row i.is-hit { animation: mp-mark .34s cubic-bezier(.2, .9, .3, 1); }
 
-.mp-player--drums .mp-sheet--drums .mp-row i.mp-x.is-hit { animation: mp-mark-x .34s cubic-bezier(.2, .9, .3, 1); }
 
 /* playhead thumps on each beat, harder on beat 1 */
 .mp-cursor.is-beat { animation: mp-beat .22s ease-out; }
@@ -215,7 +213,7 @@
 
 
 @media (prefers-reduced-motion: reduce) {
-  .mp-pc.is-hit, .mp-pc.is-hit > .shape, .mp-sheet--drums .mp-row i.is-hit, .mp-cursor.is-beat { animation-name: none !important; }
+  .mp-pc.is-hit, .mp-pc.is-hit > .shape, .mp-cursor.is-beat { animation-name: none !important; }
   .mp-pc.is-hit > .flash { animation: mp-flash .4s steps(1, end) !important; }
 }
 @media (max-width: 900px) { .mp-body--drums { grid-template-columns: 1fr; } .mp-kit { position: static; } .mp-split { display: none; }
@@ -471,12 +469,6 @@
 @keyframes mp-punch { 0% { transform: scale(calc(1 + .14 * var(--vel, .9))); } 100% { transform: scale(1); } }
 @keyframes mp-flash { 0% { opacity: calc(var(--vel, .9) * .7); } 100% { opacity: 0; } }
 @keyframes mp-bright { 0% { filter: brightness(1.45) saturate(1.3); } 100% { filter: none; } }
-@keyframes mp-mark {
-  0% { transform: scale(calc(1 + .9 * var(--vel, .9))); filter: brightness(1.25);
-       box-shadow: 0 0 0 1.5px rgba(29, 39, 54, .55), 0 0 14px 5px var(--c); }
-  100% { transform: scale(1); filter: none; box-shadow: 0 0 0 1.5px rgba(29, 39, 54, .55), 0 0 0 0 transparent; } }
-@keyframes mp-mark-x { 0% { transform: scale(calc(1 + .9 * var(--vel, .9))); text-shadow: 0 0 10px var(--c), 0 0 1px #1d2736; }
-  100% { transform: scale(1); } }
 @keyframes mp-beat { 0% { transform: scaleX(2.6); } 100% { transform: scaleX(1); } }
 @keyframes mp-downbeat { 0% { transform: scaleX(4); } 100% { transform: scaleX(1); } }
 @keyframes mp-bump { 0% { transform: scale(1.35); color: #ffd640; } 100% { transform: scale(1); } }

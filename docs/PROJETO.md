@@ -9,7 +9,7 @@ as batidas, acha padrões e passos, e oferece um player com kit, grade, modo Ste
 Hero" para bateria eletrônica via MIDI. O código também transcreve outros instrumentos, mas essa
 parte está congelada e escondida (`MUSIC_PRACTICE_ALL_INSTRUMENTS=1` mostra).
 
-Estado atual: **v26** (03/10/2026), publicado no GitHub. Foco: bateria.
+Estado atual: **v27** (03/10/2026), publicado no GitHub. Foco: bateria.
 
 ---
 
@@ -275,6 +275,15 @@ notas e pode criar figuras a mais (mix 0,72 contra 0,84 na faixa isolada).
   chega ao topo exatamente quando o primeiro compasso dela começa. Rolar com o mouse pausa o
   follow por 2,5 s. Medido: ~27 quadros de deslize, maior passo 7 px, 60 quadros/s.
 
+**Pulso das notas (v27).** Antes cada nota da grade pulsava no instante do áudio da batida.
+Como a nota é desenhada no centro da semicolcheia, uma batida fora da grade pulsava antes ou
+depois da linha passar: medido no MDB (faixa de bateria, batidas das anotações), 10% das batidas
+ficam a mais de 35 ms da grade, 8% a mais de 40 ms; com a grade do detector de batidas é mais.
+Agora a nota pulsa quando a linha cruza o centro dela (a cada quadro, entre a posição anterior e
+a atual da linha; um salto, loop ou clique não dispara nada). O kit continua no tempo do som.
+O pulso usa Web Animations (transform no compositor) em vez de tirar e pôr a classe com um
+layout forçado a cada batida.
+
 ### 4.10 Highway (bateria eletrônica via MIDI)
 - Web MIDI no Chrome do Windows (nada a configurar no Ubuntu).
 - Julgamento em tempo real: Perfect 30 ms, Good 60 ms, OK 100 ms.
@@ -358,6 +367,7 @@ python tests/benchmark_mdb.py drum_only             # precisão real (precisa do
 | v20 | Alça para escolher quantas linhas de partitura ver à frente |
 | v25 | Página inteira no visual do player (tema escuro único, amarelo de destaque), título e números da música no topo do player, campos desnecessários removidos (instrumento, caixas de seleção, áudios duplicados, explicações) |
 | v26 | Figuras de um tempo: cada tempo do compasso recebe uma letra (A = bumbo + chimbal, B = caixa + chimbal...), chips com desenho e contagem, clique acende onde a figura é tocada |
+| v27 | Notas da grade pulsam quando a linha passa por elas (não mais no tempo do áudio, que ficava até meia semicolcheia antes/depois); pulsos com Web Animations, sem forçar layout da página a cada batida; o kit continua piscando no tempo do som |
 | v24 | Bateria separada com o modelo de bateria do htdemucs_ft (melhor que o 6s em bumbo, caixa, pratos e tons) |
 | v23 | Bumbo ouvido duas vezes vira um só (caixa/chimbal 'eco' do bumbo) |
 | v22 | Grade guiada pela bateria (alinhamento, tempo 1, andamento dobrado) e Demucs repetível |
