@@ -21,8 +21,8 @@ SR = 44100
 # ---------- I/O ----------
 
 def load(path: str | Path, sr: int = SR) -> np.ndarray:
-    y, _ = librosa.load(str(path), sr=sr, mono=False)
-    return np.atleast_2d(y).astype(np.float32)
+    from ..audio_io import load as _load
+    return np.atleast_2d(_load(path, sr, mono=False)).astype(np.float32)
 
 
 def save(y: np.ndarray, path: str | Path, sr: int = SR) -> Path:

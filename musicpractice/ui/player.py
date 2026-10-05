@@ -34,20 +34,11 @@ HEAD = (f"{FONTS}<style>{PLAYER_CSS}\n.mp-hidden {{ display: none !important; }}
 
 
 def web_audio(path: str | Path) -> Path:
-    """Opus copy of an audio file for in-browser playback (~10x smaller than WAV), cached next
-    to it. The player downloads every stem fully into memory, so size matters. Falls back to
-    the original file if ffmpeg can't encode."""
-    src = Path(path)
-    out = src.parent / "web" / (src.stem + ".webm")
-    if out.exists() and out.stat().st_mtime >= src.stat().st_mtime:
-        return out
-    out.parent.mkdir(exist_ok=True)
-    try:
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(src), "-c:a", "libopus",
-                        "-b:a", "128k", str(out)], check=True, capture_output=True, timeout=300)
-        return out
-    except (OSError, subprocess.SubprocessError):
-        return src
+    """Opus copy of an audio file for in-browser playback (~10x smaller than WAV). The player
+    downloads every stem fully into memory, so size matters. After a song is compacted its
+    audio already is this copy."""
+    from ..core.storage import opus_copy
+    return opus_copy(path)
 
 
 def file_url(path: str | Path) -> str:

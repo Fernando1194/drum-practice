@@ -16,7 +16,7 @@ from typing import Callable
 
 import numpy as np
 
-from .core import Registry, Song, Workspace
+from .core import Registry, Song, Workspace, storage
 from .plugins import default_registry
 from .plugins.input import import_url
 from .plugins.separation import STEMS_6
@@ -181,7 +181,9 @@ class TranscriptionAgent:
             return False
         song.artifacts.update({"stem:drums": str(path), "drums:stem_model": DRUM_MODEL_NAME})
         song.save()
-        return True
+        # audio re-downloaded after a disk cleanup: the hits already came from this model's
+        # track, so they (and the edits on them) stay as they are
+        return song.artifacts.get("drums:hits_model") != DRUM_MODEL_NAME
 
     def _drums(self, song: Song, log: RunLog) -> None:
         use_adtof = adtof_available()
@@ -197,6 +199,7 @@ class TranscriptionAgent:
             if use_adtof:
                 song.artifacts["drums:detector"] = "adtof"
             song.artifacts["drums:source"] = "stem"
+            song.artifacts["drums:hits_model"] = song.artifacts.get("drums:stem_model")
             song.save()
         elif stale or not song.has("drums:hits"):
             log.warn("No isolated drum track, so drums were transcribed from the full mix. "
@@ -410,6 +413,10 @@ def export_bundle(song: Song, instrument: str, log: RunLog | None = None) -> Pat
         files.append((csv_path, csv_path.name))
     if song.has(f"midi:{instrument}"):
         files.append((Path(song.get(f"midi:{instrument}")), f"{instrument}.mid"))
+    for name, path in sorted(song.stems().items()):        # the separated tracks (Opus once compacted)
+        p = Path(path)
+        if p.exists():
+            files.append((p, f"tracks/{name}{p.suffix}"))
     for folder in ("isolated", "practice"):
         for p in sorted((song.dir / folder).glob("*.wav")):
             files.append((p, f"{folder}/{p.name}"))
@@ -448,7 +455,6 @@ class Conductor:
             if self.separation.available or song.stems():
                 progress(0.1, "Separating instruments (minutes on CPU, cached after)")
                 self.separation.run(song)
-                self.separation.isolate(song, instrument)
             else:
                 log.warn("Demucs is not installed, so instruments were not separated "
                          "(pip install -e \".[separation]\").")
@@ -457,5 +463,13 @@ class Conductor:
         if transcribe:
             progress(0.8, f"Transcribing {instrument}")
             self.transcription.run(song, instrument, log)
+        progress(0.97, "Freeing disk space")
+        storage.compact(song)
+        storage.touch(song)
+        cleared = storage.enforce_limit(self.ws, keep={song.id})
+        if cleared:
+            log.warn(f"Disk limit reached: removed the audio of {len(cleared)} song(s) you opened "
+                     f"longest ago ({', '.join(cleared[:3])}{'...' if len(cleared) > 3 else ''}). "
+                     "Their transcriptions and edits are kept; opening one downloads it again.")
         progress(1.0, "Done")
         return song, log

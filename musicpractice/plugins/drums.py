@@ -350,7 +350,8 @@ class DrumTranscriber:
         return True
 
     def run(self, song: Song, inputs: dict[str, Any]) -> dict[str, Any]:
-        y, _ = librosa.load(inputs["stem:drums"], sr=SR, mono=True)
+        from ..audio_io import load
+        y = load(inputs["stem:drums"], SR)
         return result_for(song, y, float(inputs["tempo"]))
 
 
@@ -363,6 +364,7 @@ def result_for(song: Song, y: np.ndarray, tempo: float, suffix: str = "") -> dic
 
 def transcribe_from_mix(song: Song) -> dict[str, Any]:
     """No drum stem: use the percussive part of the full mix (less accurate)."""
-    y, _ = librosa.load(song.get("audio:mix"), sr=SR, mono=True)
+    from ..audio_io import load
+    y = load(song.get("audio:mix"), SR)
     _, perc = librosa.effects.hpss(y, margin=2.0)
     return result_for(song, perc, float(song.get("tempo")), suffix="_from_mix")

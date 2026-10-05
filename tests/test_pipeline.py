@@ -170,8 +170,8 @@ def test_full_workflow(synth, tmp_path):
 
     song, log = c.process(str(path), "guitar")
     assert set(song.stems()) >= {"guitar", "bass", "drums", "vocals"}
-    assert (song.dir / "isolated" / "guitar.wav").exists()
-    assert (song.dir / "isolated" / "minus_guitar.wav").exists()
+    iso, minus = c.separation.isolate(song, "guitar")       # made on demand (from the Opus stems)
+    assert iso.exists() and minus.exists()
 
     # hints use stems: vocals only in B sections
     hints = [s["hint"] for s in song.get("sections")]
@@ -522,6 +522,18 @@ def test_finer_drum_stem_is_swapped_in_once_and_drums_redone(tmp_path, monkeypat
     song, _ = c.process(str(tmp_path / "song.wav"), "drums")           # cached: not run again
     assert len(calls) == 1
 
+    # audio cleared to save disk, then uploaded again: the finer drum track is made again for
+    # the mixer, but the hits already came from it, so they are not transcribed again
+    from musicpractice.core import storage
+    storage.evict(c.ws.get(song.id))
+    forced = []
+    real_ensure = c.reg.ensure
+    c.reg.ensure = lambda s, k, force=False, **kw: (forced.append(k) if force and k == "drums:hits" else None,
+                                                    real_ensure(s, k, force=force, **kw))[1]
+    song, _ = c.process(str(tmp_path / "song.wav"), "drums")
+    assert len(calls) == 2 and not forced and song.stems()
+    c.reg.ensure = real_ensure
+
     monkeypatch.setattr(AG, "separate_drums_ft", lambda song, device=None: None)
     song.artifacts.pop("drums:stem_model"); song.save()
     song, log = c.process(str(tmp_path / "song.wav"), "drums")
@@ -553,3 +565,53 @@ def test_beat_figures_split_the_bar_into_repeated_beats():
     drop_kick = [h for h in H if not (abs(h["time"] - t3) < 1e-6 and h["piece"] == "kick")]
     rows, grids = drum_bar_grids(drop_kick, beats, beats[::4], 16 * 4 * beat, rows=list(PIECES))
     assert beat_figures(rows, grids)["ids"][5][2] != kick_and
+
+
+def test_songs_are_compacted_and_the_disk_limit_keeps_edits(tmp_path, monkeypatch):
+    """After analysis only Opus audio stays (the WAVs were ~95% of the folder); over the disk
+    limit the oldest song loses its audio but keeps hits and edits, and uploading it again
+    brings the audio back without transcribing again."""
+    from musicpractice.core import storage
+    from musicpractice.plugins import drum_edit as DE
+    from musicpractice.ui import build_player
+    from musicpractice.practice.tools import PracticeRequest
+    import musicpractice.agents as AG
+    truth, stems = SD.song_with_drums(tmp_path / "song.wav", tmp_path / "stems")
+    ws = Workspace(tmp_path / "ws")
+    c = Conductor(ws)
+    c.reg._plugins.insert(0, StandInSeparator(stems))
+    song, _ = c.process(str(tmp_path / "song.wav"), "drums")
+    assert not list(song.dir.rglob("*.wav")), list(song.dir.rglob("*.wav"))
+    assert all(p.endswith(".webm") and Path(p).exists() for p in
+               [song.get("audio:mix"), *song.stems().values()])
+    assert storage.size_of(song.dir) < 0.15 * (6 + 1) * Path(stems["drums"]).stat().st_size
+    # everything after analysis still works from the Opus files
+    html = build_player(song, "drums", [("full", "Full", song.get("audio:mix"))], stems=song.stems())
+    assert ".webm" in html and "mp-kit-svg" in html
+    out = c.practice.render(song, PracticeRequest(1, 2, gains={"drums": 0.0}, speed=0.8, loops=1))
+    assert out.exists() and sf.info(str(out)).duration > 2
+    names = zipfile.ZipFile(AG.export_bundle(song, "drums")).namelist()
+    assert "tracks/drums.webm" in names
+    snare = next(h for h in song.get("drums:hits") if h["piece"] == "snare")
+    DE.rebuild(song, edits=DE.merge_edits(DE.edits_of(song), add=[], remove=[[snare["time"], "snare"]]))
+    hits_before = song.get("drums:hits")
+
+    # a second song pushes the folder over the limit: the first one (opened longer ago) is cleared
+    song.artifacts["storage:last_used"] = 1.0; song.save()
+    y, _ = sf.read(tmp_path / "song.wav")
+    sf.write(tmp_path / "song2.wav", y[: len(y) // 2], SR)
+    monkeypatch.setenv("MUSIC_PRACTICE_MAX_GB", str(storage.size_of(ws.root) * 1.2 / 1e9))
+    song2, log = c.process(str(tmp_path / "song2.wav"), "drums")
+    first = ws.get(song.id)
+    assert storage.is_evicted(first) and not storage.is_evicted(ws.get(song2.id))
+    assert not first.stems() and first.get("drums:hits") == hits_before
+    assert any("Disk limit" in n for n in log.notes)
+
+    # uploading it again: audio back, same hits and edits, drums not transcribed again
+    ran = []
+    real = AG.TranscriptionAgent._drums
+    monkeypatch.setattr(AG.TranscriptionAgent, "_drums", lambda self, s, l: (ran.append(s.has("stem:drums")), real(self, s, l)))
+    monkeypatch.setenv("MUSIC_PRACTICE_MAX_GB", "0")
+    again, _ = c.process(str(tmp_path / "song.wav"), "drums")
+    assert again.id == song.id and again.stems() and not storage.is_evicted(again)
+    assert again.get("drums:hits") == hits_before and ran == [True]

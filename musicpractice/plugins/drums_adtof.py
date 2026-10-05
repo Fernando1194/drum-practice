@@ -62,7 +62,9 @@ def detect(path: str) -> tuple[dict[int, list[tuple[float, float]]], np.ndarray]
     23 MDB Drums tracks: 0 differences in 7,716 hits)."""
     import adtof_pytorch as A
     import torch
-    x = A.load_audio_for_model(str(path))
+    from ..audio_io import as_wav
+    with as_wav(path) as wav:
+        x = A.load_audio_for_model(str(wav))
     with torch.no_grad():
         pred = _model()(x).numpy()[0]
     picker = A.PeakPicker(thresholds=CANDIDATE_MIN, fps=FPS)
@@ -102,7 +104,8 @@ def cymbal_rings(y: np.ndarray, times: list[float], sr: int = SR, hop: int = 256
 def transcribe_adtof(audio_path: str) -> list[dict[str, Any]]:
     """Candidate hits, each with a score; drum_edit.select() turns them into hits."""
     peaks, act = detect(audio_path)
-    y, _ = librosa.load(str(audio_path), sr=SR, mono=True)
+    from ..audio_io import load
+    y = load(audio_path, SR)
     col = {lab: k for k, lab in enumerate((35, 38, 47, 42, 49))}
 
     def vel(lab, t):

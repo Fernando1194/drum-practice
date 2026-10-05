@@ -16,6 +16,7 @@ from pathlib import Path
 import gradio as gr
 
 from .agents import INSTRUMENTS, Conductor, RunLog, export_bundle
+from .core import storage
 from .core import Song, Workspace
 from .plugins import drum_edit
 from .practice.tools import PracticeRequest
@@ -93,7 +94,7 @@ def build_app(conductor: Conductor) -> gr.Blocks:
 
     def player_sources(song: Song, instrument: str):
         stems = song.stems()
-        if instrument in stems:
+        if instrument in stems and not drums_only:   # drums: the live mixer replaces these files
             iso, minus = conductor.separation.isolate(song, instrument)
             return [("along", f"Play along (no {instrument})", str(minus)),
                     ("full", "Full song", song.get("audio:mix")),
@@ -204,7 +205,8 @@ def build_app(conductor: Conductor) -> gr.Blocks:
 
     # ---------------- layout ----------------
 
-    with gr.Blocks(title="Drum Practice" if drums_only else "Music Practice", fill_width=True) as app:
+    with gr.Blocks(title="Drum Practice" if drums_only else "Music Practice", fill_width=True,
+                   delete_cache=(3600, 86400)) as app:   # clears what Gradio copies to its temp folder
         state = gr.State(None)
         ex_state = gr.State({})
 
@@ -306,13 +308,39 @@ def launch(app: gr.Blocks, workspace: Workspace, **kwargs):
                       **kwargs)
 
 
+def clean(ws: Workspace) -> None:
+    before = storage.size_of(ws.root)
+    songs = [s for s in ws.list_songs() if not storage.is_evicted(s)]
+    for k, song in enumerate(songs, 1):
+        freed = storage.compact(song)
+        print(f"  {k}/{len(songs)}  -{freed / 1e6:5.0f} MB  {song.title}", flush=True)
+    cleared = storage.enforce_limit(ws)
+    for t in cleared:
+        print(f"  over the limit, audio removed (transcription kept): {t}")
+    after = storage.size_of(ws.root)
+    print(f"\n  {before / 1e9:.1f} GB -> {after / 1e9:.1f} GB")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Personal music practice tool")
     ap.add_argument("--workspace", default=None, help="Folder for songs and results")
     ap.add_argument("--device", default=None, help="Demucs device: cuda, mps or cpu")
     ap.add_argument("--port", type=int, default=7860)
+    ap.add_argument("--max-gb", type=float, default=None,
+                    help=f"Disk limit for songs (default {storage.DEFAULT_LIMIT_GB:g}; 0 = none)")
+    ap.add_argument("--clean", action="store_true",
+                    help="Shrink every song already analyzed (WAV -> Opus), apply the limit, exit")
     args = ap.parse_args()
+    if args.max_gb is not None:
+        os.environ["MUSIC_PRACTICE_MAX_GB"] = str(args.max_gb)
     ws = Workspace(args.workspace) if args.workspace else Workspace()
+    if args.clean:
+        clean(ws)
+        return
+    r = storage.report(ws)
+    print(f"  Songs: {r['songs']}, {r['bytes'] / 1e9:.1f} GB in {ws.root}"
+          + (f" ({r['wav_bytes'] / 1e9:.1f} GB of WAV: run with --clean to shrink)"
+             if r["wav_bytes"] > 1e9 else ""))
     in_wsl = "microsoft" in platform.release().lower()  # no browser inside WSL
     if in_wsl:
         print(f"\n  Open http://localhost:{args.port} in your Windows browser\n")

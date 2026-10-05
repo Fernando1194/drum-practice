@@ -9,7 +9,7 @@ as batidas, acha padrões e passos, e oferece um player com kit, grade, modo Ste
 Hero" para bateria eletrônica via MIDI. O código também transcreve outros instrumentos, mas essa
 parte está congelada e escondida (`MUSIC_PRACTICE_ALL_INSTRUMENTS=1` mostra).
 
-Estado atual: **v27** (03/10/2026), publicado no GitHub. Foco: bateria.
+Estado atual: **v28** (05/10/2026), publicado no GitHub. Foco: bateria.
 
 ---
 
@@ -250,6 +250,22 @@ daquela figura. "·" = tempo que só aparece uma vez.
 Limite [Provável]: em música com muitas variações de chimbal aberto/ghost notes, a IA erra essas
 notas e pode criar figuras a mais (mix 0,72 contra 0,84 na faixa isolada).
 
+### 4.7c Espaço em disco (v28)
+Medido na pasta do Fernando (56 músicas analisadas durante o desenvolvimento): **25 GB**, sendo
+25,7 GB de WAV (523 arquivos: download, 6 faixas separadas, 2 mixes "isolados") e 1,05 GB das
+cópias Opus, que são o único áudio que o player toca. Média de ~450 MB por música.
+**Regra 1, compactar:** ao fim da análise cada WAV vira a cópia Opus (128 kbit/s), e as pastas
+`isolated/`, `practice/`, `export/` e restos do Demucs são apagados: ~20 MB por música. Os
+mixes "isolados" passaram a ser feitos só quando pedidos (o player usa o mixer ao vivo).
+**Re-transcrever do Opus dá o mesmo resultado** (ADTOF, 23 faixas do MDB, WAV vs Opus 128k, F1):
+bumbo 0,961/0,960, caixa 0,797/0,796, chimbal 0,863/0,862, pratos 0,869/0,868, tons 0,322/0,335
+(faixa de bateria); no mix completo diferenças de no máximo 0,006.
+**Regra 2, limite (5 GB, `--max-gb`):** passando do limite, o áudio das músicas abertas há mais
+tempo é apagado; transcrição, sensibilidade e edições ficam. Ao reabrir (link ou o mesmo arquivo),
+baixa e separa de novo; se as batidas já vinham do modelo fino de bateria, não transcreve de novo.
+Descartado: apagar tudo a cada recarregamento (refaz minutos de separação a cada abertura, e a
+página não sabe com segurança quando foi fechada) e streaming (a separação precisa do arquivo inteiro).
+
 ### 4.8 Testado e descartado
 - **Chimbal aberto x fechado pelo som:** não generaliza entre músicas (a 70% de precisão, quase
   nenhum aberto encontrado). Não entrou no app.
@@ -334,7 +350,7 @@ seção; coach com LLM.
 ## 8. Testes
 
 ```bash
-python -m pytest -q                                 # 47 testes, ~3 min, músicas sintéticas
+python -m pytest -q                                 # 48 testes, ~3 min, músicas sintéticas
 python tests/browser_check.py      /tmp/out         # player (guitarra)
 python tests/browser_check_drums.py /tmp/out        # kit, grade, cores, pauta contínua
 python tests/browser_check_mixer.py /tmp/out        # mixer e sincronia das faixas
@@ -368,6 +384,7 @@ python tests/benchmark_mdb.py drum_only             # precisão real (precisa do
 | v25 | Página inteira no visual do player (tema escuro único, amarelo de destaque), título e números da música no topo do player, campos desnecessários removidos (instrumento, caixas de seleção, áudios duplicados, explicações) |
 | v26 | Figuras de um tempo: cada tempo do compasso recebe uma letra (A = bumbo + chimbal, B = caixa + chimbal...), chips com desenho e contagem, clique acende onde a figura é tocada |
 | v27 | Notas da grade pulsam quando a linha passa por elas (não mais no tempo do áudio, que ficava até meia semicolcheia antes/depois); pulsos com Web Animations, sem forçar layout da página a cada batida; o kit continua piscando no tempo do som |
+| v28 | Espaço em disco: depois da análise só ficam as cópias Opus e a transcrição (~450 MB -> ~20 MB por música); limite de 5 GB apaga o áudio das músicas abertas há mais tempo, mantendo transcrição e edições; `--clean` para as antigas; cache temporário do Gradio limpo a cada hora |
 | v24 | Bateria separada com o modelo de bateria do htdemucs_ft (melhor que o 6s em bumbo, caixa, pratos e tons) |
 | v23 | Bumbo ouvido duas vezes vira um só (caixa/chimbal 'eco' do bumbo) |
 | v22 | Grade guiada pela bateria (alinhamento, tempo 1, andamento dobrado) e Demucs repetível |

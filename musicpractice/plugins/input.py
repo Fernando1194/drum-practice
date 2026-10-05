@@ -64,7 +64,8 @@ def import_url(ws: Workspace, url: str, allow_file_urls: bool = False) -> Song:
 
     key = f"{info.get('extractor_key', 'web')}:{info.get('id', url)}"
     song_id = hashlib.sha256(key.encode()).hexdigest()[:16]
-    if (existing := ws.get(song_id)) is not None:
+    existing = ws.get(song_id)
+    if existing is not None and existing.has("audio:mix"):
         return existing
 
     song_dir = ws.song_dir(song_id)
@@ -82,6 +83,9 @@ def import_url(ws: Workspace, url: str, allow_file_urls: bool = False) -> Song:
     wav = song_dir / "original.wav"
     if not wav.exists():
         raise DownloadError("Download finished but no audio file was produced.")
+    if existing is not None:                  # audio was cleared to save space: it's back
+        from ..core.storage import restored
+        return restored(existing, wav)
     title = info.get("track") or info.get("title") or "Untitled"
     artist = info.get("artist") or info.get("uploader") or ""
     return ws.create_song(song_id, f"{artist} - {title}" if artist else title, wav,

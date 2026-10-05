@@ -65,7 +65,9 @@ def transcribe_file(audio_path: str, instrument: str, out_midi: Path,
     import soundfile as sf
     from basic_pitch.inference import predict
 
-    y, sr = librosa.load(audio_path, sr=22050, mono=True)
+    from ..audio_io import load
+    sr = 22050
+    y = load(audio_path, sr)
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         sf.write(tmp.name, np.concatenate([np.zeros(int(PAD_S * sr), np.float32), y]), sr)
         padded = tmp.name

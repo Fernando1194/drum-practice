@@ -94,6 +94,8 @@ pip install --no-deps "adtof-pytorch @ git+https://github.com/xavriley/ADTOF-pyt
 ```bash
 drum-practice                    # opens http://127.0.0.1:7860
 drum-practice --device cuda
+drum-practice --clean            # shrink songs analyzed by older versions, then exit
+drum-practice --max-gb 10        # disk limit for songs (default 5 GB)
 ```
 
 On WSL, open http://localhost:7860 in your Windows browser. Web MIDI runs in Chrome/Edge on
@@ -101,6 +103,19 @@ Windows, so the kit plugs into Windows as usual; nothing to set up inside Ubuntu
 
 Songs and results are kept in `~/.music-practice/<song id>/` (change with `--workspace`), so a
 song is only processed once.
+
+### Disk space
+
+Separation makes a lot of audio (about 450 MB of WAV per song). Once a song is analyzed the app
+keeps only compressed copies (Opus, what the player plays) and the transcription: about 20 MB
+per song. Re-transcribing from the Opus copy gives the same result (MDB Drums: F1 within 0.004
+per piece, toms within 0.013).
+
+- **Limit**: past 5 GB, the audio of the songs you opened longest ago is removed. Their
+  transcription and your edits stay; opening one again downloads and separates it again.
+  Change it with `--max-gb 10` (0 = no limit).
+- **Songs analyzed before v28**: run `drum-practice --clean` once to shrink them (one 56-song
+  folder: 25 GB of WAV).
 
 ### Links
 

@@ -30,12 +30,16 @@ class Workspace:
     def import_song(self, audio_path: Path | str, title: str | None = None) -> Song:
         audio_path = Path(audio_path)
         song_id = _hash_file(audio_path)
-        if (existing := self.get(song_id)) is not None:
+        existing = self.get(song_id)
+        if existing is not None and existing.has("audio:mix"):
             return existing
         song_dir = self.root / song_id
         song_dir.mkdir(parents=True, exist_ok=True)
         dest = song_dir / f"original{audio_path.suffix.lower()}"
         shutil.copyfile(audio_path, dest)
+        if existing is not None:              # audio was cleared to save space: it's back
+            from .storage import restored
+            return restored(existing, dest)
         return self.create_song(song_id, title or audio_path.stem, dest)
 
     def song_dir(self, song_id: str) -> Path:

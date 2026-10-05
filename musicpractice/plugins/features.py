@@ -17,7 +17,8 @@ def pc_name(pc: int, flats: bool = False) -> str:
 
 
 def load_mono(path: str, sr: int = SR) -> np.ndarray:
-    y, _ = librosa.load(path, sr=sr, mono=True)
+    from ..audio_io import load
+    y = load(path, sr)
     return y
 
 

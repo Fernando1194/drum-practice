@@ -47,7 +47,9 @@ def mark(candidates: list[dict], audio_path: str, thresholds: dict[str, float]) 
            and np.min(np.abs(kicks - h["time"])) <= TOGETHER_S]
     if not sus:
         return 0
-    y, sr = librosa.load(str(audio_path), sr=44100, mono=True)
+    from ..audio_io import load
+    sr = 44100
+    y = load(audio_path, sr)
     hop = 256
     S = np.abs(librosa.stft(y, n_fft=2048, hop_length=hop)) ** 2
     f = librosa.fft_frequencies(sr=sr, n_fft=2048)
