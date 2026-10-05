@@ -14,7 +14,8 @@ Song link -> separate the drums -> transcribe the hits -> grid on the drummer's 
           -> patterns and steps -> practice: grid, steps, highway on your MIDI kit
 ```
 
-Open source (MIT), personal project, work in progress. The transcription is good, not perfect:
+Open source (MIT), personal project, work in progress. What changed in each version, and why:
+[CHANGELOG.md](CHANGELOG.md). The transcription is good, not perfect:
 the numbers below say how good, and the app lets you fix what it gets wrong.
 
 ## What you get

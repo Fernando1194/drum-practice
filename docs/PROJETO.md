@@ -381,11 +381,11 @@ python tests/benchmark_mdb.py drum_only             # precisão real (precisa do
 | v18 | Padrões repetidos (grooves, viradas, únicos) com cores, faixa da música e loop por padrão; regra das três mãos trata prato duplicado |
 | v19 | Padrões mais tolerantes (pesos + agrupamento) e modo Steps: a música em poucos passos que se repetem |
 | v20 | Alça para escolher quantas linhas de partitura ver à frente |
+| v21 | Alça colada na partitura; grade de compassos vai até o fim da música (antes o detector de tempo parava antes, em fade-outs e finais calmos, e o fim ficava sem transcrição) |
+| v22 | Grade guiada pela bateria (alinhamento, tempo 1, andamento dobrado) e Demucs repetível |
+| v23 | Bumbo ouvido duas vezes vira um só (caixa/chimbal 'eco' do bumbo) |
+| v24 | Bateria separada com o modelo de bateria do htdemucs_ft (melhor que o 6s em bumbo, caixa, pratos e tons) |
 | v25 | Página inteira no visual do player (tema escuro único, amarelo de destaque), título e números da música no topo do player, campos desnecessários removidos (instrumento, caixas de seleção, áudios duplicados, explicações) |
 | v26 | Figuras de um tempo: cada tempo do compasso recebe uma letra (A = bumbo + chimbal, B = caixa + chimbal...), chips com desenho e contagem, clique acende onde a figura é tocada |
 | v27 | Notas da grade pulsam quando a linha passa por elas (não mais no tempo do áudio, que ficava até meia semicolcheia antes/depois); pulsos com Web Animations, sem forçar layout da página a cada batida; o kit continua piscando no tempo do som |
 | v28 | Espaço em disco: depois da análise só ficam as cópias Opus e a transcrição (~450 MB -> ~20 MB por música); limite de 5 GB apaga o áudio das músicas abertas há mais tempo, mantendo transcrição e edições; `--clean` para as antigas; cache temporário do Gradio limpo a cada hora |
-| v24 | Bateria separada com o modelo de bateria do htdemucs_ft (melhor que o 6s em bumbo, caixa, pratos e tons) |
-| v23 | Bumbo ouvido duas vezes vira um só (caixa/chimbal 'eco' do bumbo) |
-| v22 | Grade guiada pela bateria (alinhamento, tempo 1, andamento dobrado) e Demucs repetível |
-| v21 | Alça colada na partitura; grade de compassos vai até o fim da música (antes o detector de tempo parava antes, em fade-outs e finais calmos, e o fim ficava sem transcrição) |
